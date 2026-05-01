@@ -1,0 +1,85 @@
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Unity cache and generated metadata
+[Uu]ser[Ss]ettings/
+sysinfo.txt
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity crash reports
+Crashlytics/
+crashlytics-build.properties
+
+# Unity generated project files
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity Addressables / asset store generated data
+[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+[Aa]ssets/AssetStoreTools*
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.sln.DotSettings.user
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Build artifacts and logs
+*.apk
+*.aab
+*.app
+*.exe
+*.x86
+*.x86_64
+*.so
+*.dylib
+*.dll
+*.log
+
+# Python / ROS local noise
+__pycache__/
+*.py[cod]
+.pytest_cache/
+install/
+build/
+log/
+
+# Environment files
+.env
+.env.*
+!.env.example

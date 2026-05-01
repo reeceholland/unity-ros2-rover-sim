@@ -44,25 +44,25 @@ WheelCollider:
   m_Center: {x: 0, y: 0, z: 0}
   m_Radius: 0.079
   m_SuspensionSpring:
-    spring: 600
-    damper: 120
-    targetPosition: 0.5
-  m_SuspensionDistance: 0.03
+    spring: 1800
+    damper: 350
+    targetPosition: 0.45
+  m_SuspensionDistance: 0.025
   m_ForceAppPointDistance: 0
-  m_Mass: 20
-  m_WheelDampingRate: 0.25
+  m_Mass: 2
+  m_WheelDampingRate: 0.75
   m_ForwardFriction:
-    m_ExtremumSlip: 0.4
+    m_ExtremumSlip: 0.25
     m_ExtremumValue: 1
-    m_AsymptoteSlip: 0.8
-    m_AsymptoteValue: 0.5
-    m_Stiffness: 1
+    m_AsymptoteSlip: 0.6
+    m_AsymptoteValue: 0.6
+    m_Stiffness: 1.2
   m_SidewaysFriction:
-    m_ExtremumSlip: 0.2
+    m_ExtremumSlip: 0.25
     m_ExtremumValue: 1
-    m_AsymptoteSlip: 0.5
+    m_AsymptoteSlip: 0.55
     m_AsymptoteValue: 0.75
-    m_Stiffness: 1
+    m_Stiffness: 0.9
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -238,25 +238,25 @@ WheelCollider:
   m_Center: {x: 0, y: 0, z: 0}
   m_Radius: 0.079
   m_SuspensionSpring:
-    spring: 600
-    damper: 120
-    targetPosition: 0.5
-  m_SuspensionDistance: 0.03
+    spring: 1800
+    damper: 350
+    targetPosition: 0.45
+  m_SuspensionDistance: 0.025
   m_ForceAppPointDistance: 0
-  m_Mass: 20
-  m_WheelDampingRate: 0.25
+  m_Mass: 2
+  m_WheelDampingRate: 0.75
   m_ForwardFriction:
-    m_ExtremumSlip: 0.4
+    m_ExtremumSlip: 0.25
     m_ExtremumValue: 1
-    m_AsymptoteSlip: 0.8
-    m_AsymptoteValue: 0.5
-    m_Stiffness: 1
+    m_AsymptoteSlip: 0.6
+    m_AsymptoteValue: 0.6
+    m_Stiffness: 1.2
   m_SidewaysFriction:
-    m_ExtremumSlip: 0.2
+    m_ExtremumSlip: 0.25
     m_ExtremumValue: 1
-    m_AsymptoteSlip: 0.5
+    m_AsymptoteSlip: 0.55
     m_AsymptoteValue: 0.75
-    m_Stiffness: 1
+    m_Stiffness: 0.9
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -603,7 +603,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: -876546973899608171, guid: 5c81372d981403744adbdda4433c9c11, type: 3}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -692,25 +692,25 @@ WheelCollider:
   m_Center: {x: 0, y: 0, z: 0}
   m_Radius: 0.079
   m_SuspensionSpring:
-    spring: 600
-    damper: 120
-    targetPosition: 0.5
-  m_SuspensionDistance: 0.03
+    spring: 1800
+    damper: 350
+    targetPosition: 0.45
+  m_SuspensionDistance: 0.025
   m_ForceAppPointDistance: 0
-  m_Mass: 20
-  m_WheelDampingRate: 0.25
+  m_Mass: 2
+  m_WheelDampingRate: 0.75
   m_ForwardFriction:
-    m_ExtremumSlip: 0.4
+    m_ExtremumSlip: 0.25
     m_ExtremumValue: 1
-    m_AsymptoteSlip: 0.8
-    m_AsymptoteValue: 0.5
-    m_Stiffness: 1
+    m_AsymptoteSlip: 0.6
+    m_AsymptoteValue: 0.6
+    m_Stiffness: 1.2
   m_SidewaysFriction:
-    m_ExtremumSlip: 0.2
+    m_ExtremumSlip: 0.25
     m_ExtremumValue: 1
-    m_AsymptoteSlip: 0.5
+    m_AsymptoteSlip: 0.55
     m_AsymptoteValue: 0.75
-    m_Stiffness: 1
+    m_Stiffness: 0.9
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -764,25 +764,25 @@ WheelCollider:
   m_Center: {x: 0, y: 0, z: 0}
   m_Radius: 0.079
   m_SuspensionSpring:
-    spring: 600
-    damper: 120
-    targetPosition: 0.5
-  m_SuspensionDistance: 0.03
+    spring: 1800
+    damper: 350
+    targetPosition: 0.45
+  m_SuspensionDistance: 0.025
   m_ForceAppPointDistance: 0
-  m_Mass: 20
-  m_WheelDampingRate: 0.25
+  m_Mass: 2
+  m_WheelDampingRate: 0.75
   m_ForwardFriction:
-    m_ExtremumSlip: 0.4
+    m_ExtremumSlip: 0.25
     m_ExtremumValue: 1
-    m_AsymptoteSlip: 0.8
-    m_AsymptoteValue: 0.5
-    m_Stiffness: 1
+    m_AsymptoteSlip: 0.6
+    m_AsymptoteValue: 0.6
+    m_Stiffness: 1.2
   m_SidewaysFriction:
-    m_ExtremumSlip: 0.2
+    m_ExtremumSlip: 0.25
     m_ExtremumValue: 1
-    m_AsymptoteSlip: 0.5
+    m_AsymptoteSlip: 0.55
     m_AsymptoteValue: 0.75
-    m_Stiffness: 1
+    m_Stiffness: 0.9
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -853,6 +853,48 @@ MonoBehaviour:
   motorTorque: 8
   turnTorque: 6
   brakeTorque: 20
+  useRosCommands: 1
+  commandTopic: /platform/motors/cmd
+  feedbackTopic: /platform/motors/feedback
+  commandTimeout: 0.5
+  feedbackPublishRate: 20
+  stoppedVelocityThreshold: 0.05
+  frontLeftPid:
+    kp: 8
+    ki: 0.5
+    kd: 0
+    outputLimit: 20
+    integralLimit: 10
+    deadband: 0.05
+    measurementFilter: 0.25
+    outputSlewRate: 30
+  frontRightPid:
+    kp: 8
+    ki: 0.5
+    kd: 0
+    outputLimit: 20
+    integralLimit: 10
+    deadband: 0.05
+    measurementFilter: 0.25
+    outputSlewRate: 30
+  rearLeftPid:
+    kp: 8
+    ki: 0.5
+    kd: 0
+    outputLimit: 20
+    integralLimit: 10
+    deadband: 0.05
+    measurementFilter: 0.25
+    outputSlewRate: 30
+  rearRightPid:
+    kp: 8
+    ki: 0.5
+    kd: 0
+    outputLimit: 20
+    integralLimit: 10
+    deadband: 0.05
+    measurementFilter: 0.25
+    outputSlewRate: 30
 --- !u!54 &8087782319092650166
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -861,10 +903,10 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9094657619307009574}
   serializedVersion: 5
-  m_Mass: 5
-  m_LinearDamping: 0
-  m_AngularDamping: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_Mass: 12
+  m_LinearDamping: 0.05
+  m_AngularDamping: 0.6
+  m_CenterOfMass: {x: 0, y: -0.04, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:

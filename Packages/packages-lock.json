@@ -126,6 +126,12 @@
         "com.unity.render-pipelines.core": "17.0.3"
       }
     },
+    "com.unity.robotics.ros-tcp-connector": {
+      "version": "file:C:/Users/reece_pu0ewge/Desktop/Robotics/unity-ros2-rover-sim/ROS-TCP-Connector/com.unity.robotics.ros-tcp-connector",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
     "com.unity.searcher": {
       "version": "4.9.4",
       "depth": 2,

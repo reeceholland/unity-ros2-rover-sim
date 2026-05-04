@@ -43,4 +43,18 @@ public class FollowCamera : MonoBehaviour
             desiredRotation,
             rotationSmoothSpeed * Time.deltaTime);
     }
+
+    void FixedUpdate()
+    {
+        ApplyKeyboardControl();
+
+    }
+
+    void ApplyKeyboardControl()
+    {
+        if (Input.GetKey(KeyCode.UpArrow)) offset += Vector3.forward * 0.1f;
+        if (Input.GetKey(KeyCode.DownArrow)) offset += Vector3.back * 0.1f;
+        if (Input.GetKey(KeyCode.RightArrow)) offset += Vector3.right * 0.1f;
+        if (Input.GetKey(KeyCode.LeftArrow)) offset += Vector3.left * 0.1f;
+    }
 }

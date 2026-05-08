@@ -60,7 +60,8 @@ public class UnityLidarPublisher : MonoBehaviour
         for (int i = 0; i < sampleCount; i++)
         {
             float angle = angleMin + angleIncrement * i;
-            UnityEngine.Vector3 direction = transform.forward * Mathf.Cos(angle) + transform.right * Mathf.Sin(angle);
+            // ROS LaserScan positive angles rotate toward +Y left; Unity right is ROS -Y.
+            UnityEngine.Vector3 direction = transform.forward * Mathf.Cos(angle) - transform.right * Mathf.Sin(angle);
             if (Physics.Raycast(transform.position, direction, out RaycastHit hit, rangeMax, hitLayers))
             {
                 ranges[i] = hit.distance < rangeMin ? float.PositiveInfinity : hit.distance;
@@ -69,7 +70,7 @@ public class UnityLidarPublisher : MonoBehaviour
             }
             else
             {
-                ranges[i] = float.PositiveInfinity;
+                ranges[i] = rangeMax;
                 intensities[i] = 0f;
                 VisualizeRay(i, direction, rangeMax, false, transform.position + direction * rangeMax);
             }
@@ -90,13 +91,7 @@ public class UnityLidarPublisher : MonoBehaviour
 
     HeaderMsg MakeHeader()
     {
-        double now = Time.realtimeSinceStartupAsDouble;
-        int seconds = (int)now;
-        uint nanoseconds = (uint)((now - seconds) * 1e9);
-
-        TimeMsg stamp = new TimeMsg();
-        stamp.sec = seconds;
-        stamp.nanosec = nanoseconds;
+        TimeMsg stamp = RosTimeUtils.Now();
 
         HeaderMsg header = new HeaderMsg();
         header.stamp = stamp;

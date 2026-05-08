@@ -39,6 +39,12 @@ public class A4WD3Drive : MonoBehaviour
     public WheelPidController rearLeftPid = new WheelPidController();
     public WheelPidController rearRightPid = new WheelPidController();
 
+    [Header("Received Commands")]
+    public float frontLeftCommand;
+    public float frontRightCommand;
+    public float rearLeftCommand;
+    public float rearRightCommand;
+
     Quaternion frontLeftOffset;
     Quaternion frontRightOffset;
     Quaternion rearLeftOffset;
@@ -107,6 +113,10 @@ public class A4WD3Drive : MonoBehaviour
 
     void OnMotorCommand(JointStateMsg msg)
     {
+        frontLeftCommand = msg.velocity.Length > 0 ? (float)msg.velocity[0] : 0f;
+        frontRightCommand = msg.velocity.Length > 1 ? (float)msg.velocity[1] : 0f;
+        rearLeftCommand = msg.velocity.Length > 2 ? (float)msg.velocity[2] : 0f;
+        rearRightCommand = msg.velocity.Length > 3 ? (float)msg.velocity[3] : 0f;
         // JointState arrays are matched by name, so message order does not matter.
         for (int i = 0; i < msg.name.Length && i < msg.velocity.Length; i++)
         {
@@ -161,8 +171,8 @@ public class A4WD3Drive : MonoBehaviour
 
         if (Input.GetKey(KeyCode.W)) forward += 1f;
         if (Input.GetKey(KeyCode.S)) forward -= 1f;
-        if (Input.GetKey(KeyCode.D)) turn += 1f;
-        if (Input.GetKey(KeyCode.A)) turn -= 1f;
+        if (Input.GetKey(KeyCode.D)) turn -= 1f;
+        if (Input.GetKey(KeyCode.A)) turn += 1f;
 
         float leftTorque = (forward * motorTorque) - (turn * turnTorque);
         float rightTorque = (forward * motorTorque) + (turn * turnTorque);
@@ -246,18 +256,8 @@ public class A4WD3Drive : MonoBehaviour
 
     HeaderMsg MakeHeader()
     {
-        // Use Unity realtime as a simple monotonic stamp for simulated feedback messages.
-        double now = Time.realtimeSinceStartupAsDouble;
-        int seconds = (int)now;
-        uint nanoseconds = (uint)((now - seconds) * 1e9);
 
-        TimeMsg stamp = new TimeMsg();
-#if ROS2
-        stamp.sec = seconds;
-#else
-        stamp.sec = (uint)seconds;
-#endif
-        stamp.nanosec = nanoseconds;
+        TimeMsg stamp = RosTimeUtils.Now();
 
         HeaderMsg header = new HeaderMsg();
         header.stamp = stamp;

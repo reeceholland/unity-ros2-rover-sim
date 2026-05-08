@@ -134,13 +134,13 @@ public class UnityImagePublisher : MonoBehaviour
 
     HeaderMsg MakeHeader()
     {
-        double now = Time.realtimeSinceStartupAsDouble;
-        int seconds = (int)now;
-        uint nanoseconds = (uint)((now - seconds) * 1e9);
+        //double now = Time.realtimeSinceStartupAsDouble;
+        //int seconds = (int)now;
+        //uint nanoseconds = (uint)((now - seconds) * 1e9);
 
-        TimeMsg stamp = new TimeMsg();
-        stamp.sec = seconds;
-        stamp.nanosec = nanoseconds;
+        TimeMsg stamp = RosTimeUtils.Now();
+        //stamp.sec = seconds;
+        //stamp.nanosec = nanoseconds;
 
         HeaderMsg header = new HeaderMsg();
         header.stamp = stamp;

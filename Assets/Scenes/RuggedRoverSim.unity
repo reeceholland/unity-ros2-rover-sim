@@ -6486,11 +6486,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fae72851de731164ba329c512c0b4a09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WslRosLauncher
+  launchTarget: 1
   distroName: Ubuntu
   scriptPath: /home/reece/rugged_rover_ws/launch_unity_sim.sh
+  sshHost: ros-laptop
+  remoteLaunchCommand: pkill -f default_server_endpoint || true; pkill -f ros_tcp_endpoint || true; nohup /home/reece/rugged_rover_ws/launch_unity_sim.sh > /tmp/rugged_rover_unity_sim.log 2>&1 & echo started
+  remoteStopCommand: pkill -f launch_unity_sim.sh || true; pkill -f default_server_endpoint || true; pkill -f ros_tcp_endpoint || true
   launchOnStart: 1
   stopOnQuit: 1
-  showWslWindow: 1
+  showWslWindow: 0
 --- !u!4 &1693126907
 Transform:
   m_ObjectHideFlags: 0

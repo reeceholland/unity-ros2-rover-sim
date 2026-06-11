@@ -27,13 +27,17 @@ public class UnityLidarPublisher : MonoBehaviour
 
     ROSConnection ros;
     float lastPublishTime;
+    string resolvedScanTopic;
     Transform[] hitMarkers;
     Material hitMarkerMaterial;
 
     void Start()
     {
+        resolvedScanTopic = UnityTopicRemapper.Resolve(
+            this, scanTopic, UnityTopicRemapper.TopicKind.Sensor);
+
         ros = ROSConnection.GetOrCreateInstance();
-        ros.RegisterPublisher<LaserScanMsg>(scanTopic);
+        ros.RegisterPublisher<LaserScanMsg>(resolvedScanTopic);
         CreateHitMarkers();
     }
 
@@ -76,7 +80,7 @@ public class UnityLidarPublisher : MonoBehaviour
             }
         }
 
-        ros.Publish(scanTopic, new LaserScanMsg(
+        ros.Publish(resolvedScanTopic, new LaserScanMsg(
             MakeHeader(),
             angleMin,
             angleMax,

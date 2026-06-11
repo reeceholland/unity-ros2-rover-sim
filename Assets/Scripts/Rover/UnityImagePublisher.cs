@@ -28,11 +28,15 @@ public class UnityImagePublisher : MonoBehaviour
     float lastPublishTime;
     bool loggedFirstPublish;
     bool isPublishing;
+    string resolvedImageTopic;
 
     void Start()
     {
+        resolvedImageTopic = UnityTopicRemapper.Resolve(
+            this, imageTopic, UnityTopicRemapper.TopicKind.Sensor);
+
         ros = ROSConnection.GetOrCreateInstance();
-        ros.RegisterPublisher<CompressedImageMsg>(imageTopic);
+        ros.RegisterPublisher<CompressedImageMsg>(resolvedImageTopic);
 
         cameraSensor = GetComponent<Camera>();
         renderTexture = new RenderTexture(imageWidth, imageHeight, 24, RenderTextureFormat.ARGB32);
@@ -42,7 +46,7 @@ public class UnityImagePublisher : MonoBehaviour
 
         if (logDebugMessages)
         {
-            Debug.Log($"UnityImagePublisher registered {imageTopic} ({imageWidth}x{imageHeight})");
+            Debug.Log($"UnityImagePublisher registered {resolvedImageTopic} ({imageWidth}x{imageHeight})");
             Debug.Log($"UnityImagePublisher camera world pose: position={transform.position}, rotation={transform.rotation.eulerAngles}");
         }
     }
@@ -105,7 +109,7 @@ public class UnityImagePublisher : MonoBehaviour
             jpegBytes = readTexture.EncodeToJPG(jpegQuality);
         }
 
-        ros.Publish(imageTopic, new CompressedImageMsg(
+        ros.Publish(resolvedImageTopic, new CompressedImageMsg(
             MakeHeader(),
             "jpeg",
             jpegBytes));
@@ -113,7 +117,7 @@ public class UnityImagePublisher : MonoBehaviour
         if (logDebugMessages && !loggedFirstPublish)
         {
             loggedFirstPublish = true;
-            Debug.Log($"UnityImagePublisher published first frame on {imageTopic}: {jpegBytes.Length} bytes");
+            Debug.Log($"UnityImagePublisher published first frame on {resolvedImageTopic}: {jpegBytes.Length} bytes");
         }
     }
 

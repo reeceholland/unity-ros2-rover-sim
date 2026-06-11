@@ -19,7 +19,7 @@ public class UnityImuPublisher : MonoBehaviour
 {
     [Header("ROS")]
     // Topic that robot_localization or another state estimator can consume.
-    public string imuTopic = "/sensors/imu";
+    public string imuTopic = "/imu/data";
 
     // This should match the IMU link name in the URDF.
     // Example URDF:
@@ -41,6 +41,7 @@ public class UnityImuPublisher : MonoBehaviour
 
     // Shared ROS-TCP-Connector instance.
     ROSConnection ros;
+    string resolvedImuTopic;
 
     // The rover Rigidbody gives us the motion data we turn into IMU readings.
     Rigidbody roverBody;
@@ -53,9 +54,12 @@ public class UnityImuPublisher : MonoBehaviour
 
     void Start()
     {
+        resolvedImuTopic = UnityTopicRemapper.Resolve(
+            this, imuTopic, UnityTopicRemapper.TopicKind.Sensor);
+
         // Register the ROS publisher once when the scene starts.
         ros = ROSConnection.GetOrCreateInstance();
-        ros.RegisterPublisher<ImuMsg>(imuTopic);
+        ros.RegisterPublisher<ImuMsg>(resolvedImuTopic);
 
         // The IMU is usually a child object, so look upward for the rover body.
         roverBody = GetComponentInParent<Rigidbody>();
@@ -213,7 +217,7 @@ public class UnityImuPublisher : MonoBehaviour
             linearAccelerationCovariance
         );
 
-        ros.Publish(imuTopic, imu);
+        ros.Publish(resolvedImuTopic, imu);
     }
 
     // Converts a vector from Unity's body-frame convention to ROS convention.

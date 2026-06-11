@@ -1,3 +1,26 @@
+* text=auto eol=lf
+
+# Unity text assets should stay stable across Windows/WSL/Linux checkouts.
+*.asmdef text eol=lf
+*.asset text eol=lf
+*.controller text eol=lf
+*.cs text eol=lf
+*.inputactions text eol=lf
+*.mat text eol=lf
+*.meta text eol=lf
+*.physicMaterial text eol=lf
+*.prefab text eol=lf
+*.shader text eol=lf
+*.txt text eol=lf
+*.unity text eol=lf
+*.uxml text eol=lf
+*.uss text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.sh text eol=lf
+
 *.jpeg filter=lfs diff=lfs merge=lfs -text
 *.wav filter=lfs diff=lfs merge=lfs -text
 *.mp3 filter=lfs diff=lfs merge=lfs -text

@@ -399,7 +399,7 @@ Transform:
   m_GameObject: {fileID: 2041133937613107886}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.1146, z: 0.122}
+  m_LocalPosition: {x: 0, y: 0.1905, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -525,7 +525,7 @@ Transform:
   m_GameObject: {fileID: 2935179382201572762}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.10906635, z: 0.1847}
+  m_LocalPosition: {x: 0, y: 0.0905, z: 0.15}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -682,7 +682,7 @@ Transform:
   m_GameObject: {fileID: 3700571568910281471}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.051, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -698,7 +698,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a7a971064f48b0b488d3f8cd24dd20b0, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::UnityLidarPublisher
   scanTopic: /scan
   frameId: laser
@@ -1011,9 +1011,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c1982fa6e0a71fe49bf71d3318b250e6, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::UnityImuPublisher
-  imuTopic: /sensors/imu
+  imuTopic: /imu/data
   frameId: imu_link
   publishRateHz: 50
   publishOrientation: 1
@@ -1298,13 +1298,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7330532085307404943}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.13052619, y: 0, z: 0, w: 0.9914449}
-  m_LocalPosition: {x: 0, y: 0.32, z: 0.28}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2589581555401525024}
-  m_LocalEulerAnglesHint: {x: 15, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &7610945860857419993
 Camera:
   m_ObjectHideFlags: 0
@@ -1374,7 +1374,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalCameraData
   m_RenderShadows: 1
   m_RequiresDepthTextureOption: 2
@@ -1418,7 +1418,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d0934196a98b70343ac5787b50dc2bb9, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::UnityImagePublisher
   imageTopic: /camera/image/compressed
   frameId: camera_link
@@ -1472,7 +1472,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 857b769f53ed89e4dac662faea880aa9, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::UnityBatteryVoltagePublisher
   batteryVoltageTopic: /battery/voltage
   publishRateHz: 10
@@ -1764,6 +1764,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5262465988380764079}
+  - component: {fileID: 6508573665644680201}
   - component: {fileID: 2306226563320574352}
   - component: {fileID: 8087782319092650166}
   m_Layer: 0
@@ -1797,6 +1798,23 @@ Transform:
   - {fileID: 1320980781327317530}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6508573665644680201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9094657619307009574}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f8cf9e4dd8b4f3489f7da0f6a27f915, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::UnityTopicRemapper
+  Remap: 0
+  rawPostfix: _raw
+  remapSensorTopics: 1
+  remapActuatorFeedbackTopics: 1
+  remapMotorCommandTopics: 0
 --- !u!114 &2306226563320574352
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1807,7 +1825,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 08ddde677a215f24ab2572503e115b3f, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: '::'
   frontLeft: {fileID: 5252594668501339938}
   frontRight: {fileID: 9035906198119188907}
@@ -1824,7 +1842,7 @@ MonoBehaviour:
   commandTopic: /platform/motors/cmd
   feedbackTopic: /platform/motors/feedback
   commandTimeout: 0.5
-  feedbackPublishRate: 20
+  feedbackPublishRate: 50
   stoppedVelocityThreshold: 0.05
   frontLeftPid:
     kp: 8

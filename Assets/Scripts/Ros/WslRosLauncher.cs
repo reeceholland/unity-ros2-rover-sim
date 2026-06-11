@@ -4,11 +4,27 @@ using UnityEngine;
 
 public class WslRosLauncher : MonoBehaviour
 {
+    public enum LaunchTarget
+    {
+        Wsl,
+        Ssh
+    }
+
+    [Header("Launch Target")]
+    public LaunchTarget launchTarget = LaunchTarget.Wsl;
+
     [Header("WSL")]
     public string distroName = "Ubuntu";
 
-    [Header("ROS")]
+    [Header("Local WSL ROS")]
     public string scriptPath = "/home/reece/rugged_rover_ws/launch_unity_sim.sh";
+
+    [Header("Remote SSH ROS")]
+    public string sshHost = "ros-laptop";
+    public string remoteLaunchCommand =
+        "pkill -f default_server_endpoint || true; pkill -f ros_tcp_endpoint || true; nohup /home/reece/rugged_rover_ws/launch_unity_sim.sh > /tmp/rugged_rover_unity_sim.log 2>&1 & echo started";
+    public string remoteStopCommand =
+        "pkill -f launch_unity_sim.sh || true; pkill -f default_server_endpoint || true; pkill -f ros_tcp_endpoint || true";
 
     [Header("Debug")]
     public bool launchOnStart = true;
@@ -45,25 +61,14 @@ public class WslRosLauncher : MonoBehaviour
             return;
         }
 
-        string arguments = $"-d {distroName} -- bash -lc \"{scriptPath}\"";
+        ProcessStartInfo startInfo = CreateStartInfo();
 
         UnityEngine.Debug.Log("[WslRosLauncher] Starting ROS launch script.");
-        UnityEngine.Debug.Log($"[WslRosLauncher] Distro: {distroName}");
-        UnityEngine.Debug.Log($"[WslRosLauncher] Script: {scriptPath}");
-        UnityEngine.Debug.Log($"[WslRosLauncher] Full WSL arguments: {arguments}");
+        UnityEngine.Debug.Log($"[WslRosLauncher] Launch target: {launchTarget}");
+        UnityEngine.Debug.Log($"[WslRosLauncher] Command: {startInfo.FileName} {startInfo.Arguments}");
 
         try
         {
-            ProcessStartInfo startInfo = new ProcessStartInfo
-            {
-                FileName = "wsl.exe",
-                Arguments = arguments,
-                UseShellExecute = showWslWindow,
-                CreateNoWindow = !showWslWindow,
-                RedirectStandardOutput = !showWslWindow,
-                RedirectStandardError = !showWslWindow
-            };
-
             rosProcess = new Process
             {
                 StartInfo = startInfo,
@@ -95,7 +100,8 @@ public class WslRosLauncher : MonoBehaviour
 
             if (!started)
             {
-                UnityEngine.Debug.LogError("[WslRosLauncher] Failed to start wsl.exe process.");
+                UnityEngine.Debug.LogError(
+                    $"[WslRosLauncher] Failed to start {startInfo.FileName} process.");
                 return;
             }
 
@@ -127,11 +133,22 @@ public class WslRosLauncher : MonoBehaviour
             {
                 UnityEngine.Debug.Log(
                     $"[WslRosLauncher] ROS process already exited with code {rosProcess.ExitCode}.");
+
+                if (launchTarget == LaunchTarget.Ssh && !string.IsNullOrWhiteSpace(remoteStopCommand))
+                {
+                    RunRemoteStopCommand();
+                }
+
                 CleanupProcess();
                 return;
             }
 
             UnityEngine.Debug.Log($"[WslRosLauncher] Stopping ROS launch process. PID: {rosProcess.Id}");
+
+            if (launchTarget == LaunchTarget.Ssh && !string.IsNullOrWhiteSpace(remoteStopCommand))
+            {
+                RunRemoteStopCommand();
+            }
 
             rosProcess.Kill();
 
@@ -173,5 +190,80 @@ public class WslRosLauncher : MonoBehaviour
         rosProcess = null;
 
         UnityEngine.Debug.Log("[WslRosLauncher] ROS process reference cleaned up.");
+    }
+
+    private ProcessStartInfo CreateStartInfo()
+    {
+        string fileName;
+        string arguments;
+
+        if (launchTarget == LaunchTarget.Ssh)
+        {
+            fileName = "ssh.exe";
+            arguments = $"{sshHost} bash -lc {QuoteForProcessArgument(BashSingleQuote(remoteLaunchCommand))}";
+        }
+        else
+        {
+            fileName = "wsl.exe";
+            arguments = $"-d {distroName} -- bash -lc {QuoteForProcessArgument(BashSingleQuote(scriptPath))}";
+        }
+
+        return new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            UseShellExecute = showWslWindow,
+            CreateNoWindow = !showWslWindow,
+            RedirectStandardOutput = !showWslWindow,
+            RedirectStandardError = !showWslWindow
+        };
+    }
+
+    private void RunRemoteStopCommand()
+    {
+        try
+        {
+            string arguments =
+                $"{sshHost} bash -lc {QuoteForProcessArgument(BashSingleQuote(remoteStopCommand))}";
+
+            ProcessStartInfo stopInfo = new ProcessStartInfo
+            {
+                FileName = "ssh.exe",
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            Process stopProcess = Process.Start(stopInfo);
+            if (stopProcess == null)
+            {
+                UnityEngine.Debug.LogWarning("[WslRosLauncher] Failed to start remote stop process.");
+                return;
+            }
+
+            stopProcess.WaitForExit(5000);
+
+            UnityEngine.Debug.Log(
+                $"[WslRosLauncher] Remote stop command sent. ExitCode: {stopProcess.ExitCode}");
+
+            stopProcess.Dispose();
+        }
+        catch (Exception ex)
+        {
+            UnityEngine.Debug.LogWarning(
+                $"[WslRosLauncher] Failed to run remote stop command: {ex.Message}");
+        }
+    }
+
+    private string BashSingleQuote(string value)
+    {
+        return $"'{value.Replace("'", "'\\''")}'";
+    }
+
+    private string QuoteForProcessArgument(string value)
+    {
+        return $"\"{value.Replace("\"", "\\\"")}\"";
     }
 }

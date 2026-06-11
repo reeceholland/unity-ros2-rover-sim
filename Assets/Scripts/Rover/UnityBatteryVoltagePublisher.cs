@@ -18,14 +18,18 @@ public class UnityBatteryVoltagePublisher : MonoBehaviour
     public float currentVoltage;
 
     ROSConnection ros;
+    string resolvedBatteryVoltageTopic;
     float nextPublishTime;
 
     void Start()
     {
         currentVoltage = startingVoltage;
 
+        resolvedBatteryVoltageTopic = UnityTopicRemapper.Resolve(
+            this, batteryVoltageTopic, UnityTopicRemapper.TopicKind.Sensor);
+
         ros = ROSConnection.GetOrCreateInstance();
-        ros.RegisterPublisher<Float32Msg>(batteryVoltageTopic);
+        ros.RegisterPublisher<Float32Msg>(resolvedBatteryVoltageTopic);
     }
 
     void Update()
@@ -52,6 +56,6 @@ public class UnityBatteryVoltagePublisher : MonoBehaviour
             data = currentVoltage
         };
 
-        ros.Publish(batteryVoltageTopic, voltage);
+        ros.Publish(resolvedBatteryVoltageTopic, voltage);
     }
 }

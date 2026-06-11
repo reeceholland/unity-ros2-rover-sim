@@ -30,7 +30,7 @@ public class A4WD3Drive : MonoBehaviour
     public string commandTopic = "/platform/motors/cmd";
     public string feedbackTopic = "/platform/motors/feedback";
     public float commandTimeout = 0.5f;
-    public float feedbackPublishRate = 20f;
+    public float feedbackPublishRate = 50f;
     public float stoppedVelocityThreshold = 0.05f;
 
     [Header("Wheel Velocity PID")]
@@ -51,6 +51,8 @@ public class A4WD3Drive : MonoBehaviour
     Quaternion rearRightOffset;
 
     ROSConnection ros;
+    string resolvedCommandTopic;
+    string resolvedFeedbackTopic;
 
     // These names must match the ROS 2 controller config and URDF joint names.
     readonly string[] jointNames =
@@ -75,9 +77,14 @@ public class A4WD3Drive : MonoBehaviour
         rearRightOffset = GetWheelOffset(rearRight, rearRightMesh);
 
         // Unity acts as the simulated hardware behind ros2_control.
+        resolvedCommandTopic = UnityTopicRemapper.Resolve(
+            this, commandTopic, UnityTopicRemapper.TopicKind.MotorCommand);
+        resolvedFeedbackTopic = UnityTopicRemapper.Resolve(
+            this, feedbackTopic, UnityTopicRemapper.TopicKind.ActuatorFeedback);
+
         ros = ROSConnection.GetOrCreateInstance();
-        ros.Subscribe<JointStateMsg>(commandTopic, OnMotorCommand);
-        ros.RegisterPublisher<JointStateMsg>(feedbackTopic);
+        ros.Subscribe<JointStateMsg>(resolvedCommandTopic, OnMotorCommand);
+        ros.RegisterPublisher<JointStateMsg>(resolvedFeedbackTopic);
     }
 
     void FixedUpdate()
@@ -95,6 +102,7 @@ public class A4WD3Drive : MonoBehaviour
             if (wasUsingRosCommand)
             {
                 ResetPidControllers();
+                ClearRosVelocityTargets();
             }
 
             ApplyKeyboardControl();
@@ -221,6 +229,19 @@ public class A4WD3Drive : MonoBehaviour
         rearRightPid.Reset();
     }
 
+    void ClearRosVelocityTargets()
+    {
+        for (int i = 0; i < targetVelocities.Length; i++)
+        {
+            targetVelocities[i] = 0f;
+        }
+
+        frontLeftCommand = 0f;
+        frontRightCommand = 0f;
+        rearLeftCommand = 0f;
+        rearRightCommand = 0f;
+    }
+
     void UpdateJointPositions()
     {
         // Integrate wheel velocity so ros2_control receives both position and velocity feedback.
@@ -240,7 +261,7 @@ public class A4WD3Drive : MonoBehaviour
 
         lastFeedbackPublishTime = Time.time;
 
-        ros.Publish(feedbackTopic, new JointStateMsg(
+        ros.Publish(resolvedFeedbackTopic, new JointStateMsg(
             MakeHeader(),
             jointNames,
             jointPositions,

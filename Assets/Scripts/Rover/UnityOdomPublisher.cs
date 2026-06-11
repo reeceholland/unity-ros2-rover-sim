@@ -9,6 +9,7 @@ using RosMessageTypes.Tf2;
 public class UnityOdomPublisher : MonoBehaviour
 {
     [Header("ROS Topics")]
+    public bool publishOdom = false;
     public string odomTopic = "/odom";
     public string tfTopic = "/tf";
 
@@ -21,6 +22,8 @@ public class UnityOdomPublisher : MonoBehaviour
 
     private ROSConnection ros;
     private float nextPublishTime;
+    private string resolvedOdomTopic;
+    private string resolvedTfTopic;
 
     private Vector3 lastPosition;
     private Quaternion lastRotation;
@@ -29,10 +32,15 @@ public class UnityOdomPublisher : MonoBehaviour
 
     void Start()
     {
+        resolvedOdomTopic = UnityTopicRemapper.Resolve(
+            this, odomTopic, UnityTopicRemapper.TopicKind.Sensor);
+        resolvedTfTopic = UnityTopicRemapper.Resolve(
+            this, tfTopic, UnityTopicRemapper.TopicKind.Other);
+
         ros = ROSConnection.GetOrCreateInstance();
 
-        ros.RegisterPublisher<OdometryMsg>(odomTopic);
-        ros.RegisterPublisher<TFMessageMsg>(tfTopic);
+        ros.RegisterPublisher<OdometryMsg>(resolvedOdomTopic);
+        ros.RegisterPublisher<TFMessageMsg>(resolvedTfTopic);
 
         lastPosition = transform.position;
         lastRotation = transform.rotation;
@@ -41,6 +49,8 @@ public class UnityOdomPublisher : MonoBehaviour
 
     void Update()
     {
+        if (!publishOdom)
+            return;
         if (Time.time < nextPublishTime)
             return;
 
@@ -118,8 +128,8 @@ public class UnityOdomPublisher : MonoBehaviour
             transforms = new TransformStampedMsg[] { odomTf }
         };
 
-        ros.Publish(odomTopic, odom);
-        ros.Publish(tfTopic, tfMessage);
+        ros.Publish(resolvedOdomTopic, odom);
+        ros.Publish(resolvedTfTopic, tfMessage);
     }
 
     TimeMsg ToRosTime(float unityTime)

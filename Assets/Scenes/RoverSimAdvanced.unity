@@ -4584,16 +4584,20 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 181198543}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fae72851de731164ba329c512c0b4a09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WslRosLauncher
+  launchTarget: 0
   distroName: Ubuntu
   scriptPath: /home/reece/rugged_rover_ws/launch_unity_sim.sh
+  sshHost: ros-laptop
+  remoteLaunchCommand: /home/reece/rugged_rover_ws/launch_unity_sim.sh
+  remoteStopCommand: /home/reece/rugged_rover_ws/stop_unity_sim.sh
   launchOnStart: 1
   stopOnQuit: 1
-  showWslWindow: 1
+  showWslWindow: 0
 --- !u!4 &181198545
 Transform:
   m_ObjectHideFlags: 0
@@ -6276,15 +6280,23 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2306226563320574352, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
       propertyPath: feedbackTopic
-      value: /platform/motors/feedback_raw
+      value: /platform/motors/feedback
       objectReference: {fileID: 0}
     - target: {fileID: 2385806001628187930, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
       propertyPath: rangeMax
-      value: 20
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 2385806001628187930, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
       propertyPath: scanTopic
-      value: /scan_raw
+      value: /scan
+      objectReference: {fileID: 0}
+    - target: {fileID: 2385806001628187930, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      propertyPath: publishRate
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 2385806001628187930, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      propertyPath: fieldOfViewFDegrees
+      value: 360
       objectReference: {fileID: 0}
     - target: {fileID: 5262465988380764079, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
       propertyPath: m_LocalPosition.x
@@ -6328,7 +6340,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5373149388136389667, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
       propertyPath: imuTopic
-      value: /sensors/imu_raw
+      value: /imu/data
+      objectReference: {fileID: 0}
+    - target: {fileID: 8470529919449753995, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8470529919449753995, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8470529919449753995, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 180
       objectReference: {fileID: 0}
     - target: {fileID: 9094657619307009574, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
       propertyPath: m_Name
@@ -55714,8 +55738,8 @@ SceneRoots:
   - {fileID: 720961548}
   - {fileID: 2094499605}
   - {fileID: 2001078435}
-  - {fileID: 247647842}
   - {fileID: 1500066426}
+  - {fileID: 247647842}
   - {fileID: 333222948}
   - {fileID: 2062887153}
   - {fileID: 546515365}

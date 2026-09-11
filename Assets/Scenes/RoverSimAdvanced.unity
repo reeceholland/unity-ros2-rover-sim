@@ -6278,6 +6278,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2041133937613107886, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2306226563320574352, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
       propertyPath: feedbackTopic
       value: /platform/motors/feedback
@@ -6342,6 +6346,18 @@ PrefabInstance:
       propertyPath: imuTopic
       value: /imu/data
       objectReference: {fileID: 0}
+    - target: {fileID: 6508573665644680201, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      propertyPath: Remap
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6508573665644680201, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8400277680634347636, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8470529919449753995, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
       propertyPath: m_LocalRotation.w
       value: 0
@@ -6365,6 +6381,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 9094657619307009574, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1074847817}
+    - targetCorrespondingSourceObject: {fileID: 8400277680634347636, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1350408551}
   m_SourcePrefab: {fileID: 100100000, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
 --- !u!1001 &248439055
 PrefabInstance:
@@ -31989,6 +32008,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94e26982d6d5d024fa8ca2dd14b5b3ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnityOdomPublisher
+  publishOdom: 0
   odomTopic: /ground_truth/odom
   tfTopic: /ground_truth/tf
   odomFrame: odom
@@ -37305,6 +37325,41 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6368382622687595479, guid: 30023cc824132bd4bb6a2cd831be15ba, type: 3}
   m_PrefabInstance: {fileID: 1649380388}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1350408549 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8400277680634347636, guid: c51e213aa8c1c94489209b521a81c8ed, type: 3}
+  m_PrefabInstance: {fileID: 247647842}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1350408551
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1350408549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00983af5394577546966543d8a0f675e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnityOusterOs1Publisher
+  pointCloudTopic: /ouster/points
+  frameId: os1_lidar
+  orientationReference: {fileID: 1074847820}
+  verticalChannels: 32
+  horizontalSamples: 512
+  verticalFovDegrees: 45
+  publishRate: 10
+  rangeMin: 0.3
+  rangeMax: 30
+  hitLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  drawDebugRays: 0
+  debugHorizontalStride: 32
+  debugVerticalStride: 4
+  hitRayColor: {r: 0, g: 1, b: 1, a: 1}
+  missRayColor: {r: 1, g: 0, b: 0, a: 0.25}
+  debugRayDuration: 0.1
 --- !u!1001 &1351373897
 PrefabInstance:
   m_ObjectHideFlags: 0

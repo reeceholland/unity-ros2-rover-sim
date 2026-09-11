@@ -83,3 +83,20 @@ log/
 .env
 .env.*
 !.env.example
+
+# Local Codex screenshots and video previews
+/.codex_*/
+/.codex_*.png
+/.codex_*.jpg
+
+# Unity recovery scenes and their folder metadata
+/Assets/_Recovery/
+/Assets/_Recovery.meta
+
+# Local Python environments
+/.venv/
+/venv/
+
+# Local branding artwork
+/Assets/Branding/
+/Assets/Branding.meta

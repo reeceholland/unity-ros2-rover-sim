@@ -1,0 +1,13 @@
+injectors:
+  - id: ci_scan
+    type: scan
+    topic:
+      input_topic: /scan_raw
+      output_topic: /ci/scan
+      qos_depth: 10
+faults:
+  - id: ci_scan_dropout
+    injector_id: ci_scan
+    active_on_startup: false
+    config:
+      drop_probability: 1.0

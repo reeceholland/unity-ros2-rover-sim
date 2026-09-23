@@ -67,6 +67,10 @@ public class A4WD3Drive : MonoBehaviour
     float lastCommandTime = -1f;
     float lastFeedbackPublishTime;
     bool wasUsingRosCommand;
+    const string WatchdogTopic = "/platform/motors/command_timeout";
+    float watchdogStartTime;
+    float lastWatchdogPublishTime = -1f;
+    bool watchdogTimedOut;
 
     void Start()
     {
@@ -85,6 +89,8 @@ public class A4WD3Drive : MonoBehaviour
         ros = ROSConnection.GetOrCreateInstance();
         ros.Subscribe<JointStateMsg>(resolvedCommandTopic, OnMotorCommand);
         ros.RegisterPublisher<JointStateMsg>(resolvedFeedbackTopic);
+        ros.RegisterPublisher<BoolMsg>(WatchdogTopic);
+        watchdogStartTime = Time.time;
     }
 
     void FixedUpdate()
@@ -92,6 +98,16 @@ public class A4WD3Drive : MonoBehaviour
         // ROS velocity commands take priority while fresh; keyboard input is a local fallback.
         bool hasFreshRosCommand = useRosCommands && lastCommandTime >= 0f &&
             Time.time - lastCommandTime <= commandTimeout;
+
+        // Report the same timeout used by drive control, including no commands at startup.
+        bool timedOut = useRosCommands && !hasFreshRosCommand &&
+            Time.time - watchdogStartTime > commandTimeout;
+        if (timedOut != watchdogTimedOut || Time.time - lastWatchdogPublishTime >= 1f)
+        {
+            ros.Publish(WatchdogTopic, new BoolMsg(timedOut));
+            watchdogTimedOut = timedOut;
+            lastWatchdogPublishTime = Time.time;
+        }
 
         if (hasFreshRosCommand)
         {

@@ -9,7 +9,7 @@ groups. Do not run a second endpoint or player on that port.
 
 - Ubuntu/WSL with ROS Jazzy, `python3`, `flock`, `timeout`, `ss`.
 - Built and sourced-compatible `~/rugged_rover_ws` and `~/fault_injection_ws`.
-  Rover bringup must support `use_slam`, `use_nav2`, `ros_tcp_ip` and simulation time.
+  Rover bringup must support `use_slam`, `use_nav2`, `use_motor_fault_injection`, `ros_tcp_ip` and simulation time.
 - Unity **6000.3.14f1** with **Linux Build Support (Mono)**.
 - The CI scene publishes `/clock`, `/scan_raw`, `/platform/motors/feedback`,
   and `/imu/data`, and subscribes to `/platform/motors/cmd` at localhost:10000.
@@ -44,6 +44,7 @@ bash tools/ci/run_headless_navigation.sh
 bash tools/ci/run_headless_navigation.sh --scenario /absolute/path/route.json
 ```
 
+The runner explicitly enables `use_motor_fault_injection:=true`.
 Motion and dropout runs disable Nav2 and SLAM. Navigation enables both.
 The navigation/motion injector always forwards motor commands from
 `/platform/motors/cmd_raw` to `/platform/motors/cmd` and scans from `/scan_raw`

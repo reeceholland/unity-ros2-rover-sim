@@ -44,7 +44,7 @@ navigation=false
 [[ "$mode" != navigation ]] || navigation=true
 scenario="$repo_dir/tools/ci/navigation_faults.yaml"
 [[ "$mode" != dropout ]] || scenario="$repo_dir/tools/ci/scan_dropout.yaml"
-setsid ros2 launch rugged_rover_bringup unity_sim.launch.py use_slam:="$navigation" use_nav2:="$navigation" ros_tcp_ip:=127.0.0.1 > "$output/ros.log" 2>&1 &
+setsid ros2 launch rugged_rover_bringup unity_sim.launch.py use_slam:="$navigation" use_nav2:="$navigation" use_motor_fault_injection:=true ros_tcp_ip:=127.0.0.1 > "$output/ros.log" 2>&1 &
 children+=("$!")
 setsid ros2 launch ros2_fault_injection fault_injector.launch.py scenario_file:="$scenario" > "$output/injector.log" 2>&1 &
 children+=("$!")
@@ -55,6 +55,8 @@ case "$mode" in
  dropout) test_args=(test_ci_scan_dropout.py);;
  navigation) test_args=(test_ci_navigation.py --scenario "$repo_dir/tools/ci/waypoints.json" --output "$output");;
 esac
+# Clear the previous run before starting the live log follower.
+: > "$output/test.log"
 # A hard outer deadline also bounds startup and unexpected client hangs.
 setsid timeout --signal=INT --kill-after=10s "${CI_TIMEOUT:-900s}" python3 -u "$repo_dir/tools/ci/${test_args[0]}" "${test_args[@]:1}" "$@" > "$output/test.log" 2>&1 &
 children+=("$!")

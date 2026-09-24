@@ -100,3 +100,9 @@ log/
 # Local branding artwork
 /Assets/Branding/
 /Assets/Branding.meta
+
+# Packaged Linux CI players and generated release checksums (repository root)
+/ci-rover-linux-*.tar.gz
+/ci-rover-linux-*.zip
+/ci-rover-linux-*.sha256
+/SHA256SUMS

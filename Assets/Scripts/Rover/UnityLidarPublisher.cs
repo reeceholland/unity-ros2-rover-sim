@@ -74,7 +74,8 @@ public class UnityLidarPublisher : MonoBehaviour
             }
             else
             {
-                ranges[i] = rangeMax;
+                // A missed ray is not a surface at maximum range.
+                ranges[i] = float.PositiveInfinity;
                 intensities[i] = 0f;
                 VisualizeRay(i, direction, rangeMax, false, transform.position + direction * rangeMax);
             }

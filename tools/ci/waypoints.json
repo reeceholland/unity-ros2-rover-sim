@@ -1,0 +1,50 @@
+{
+  "frame_id": "map",
+  "ready_timeout": 60,
+  "clock_timeout": 5,
+  "goals": [
+    {
+      "name": "point_1",
+      "x": 4.501072,
+      "y": 4.741417,
+      "yaw_deg": -177.35499295710818,
+      "timeout": 180,
+      "position_tolerance": 0.3,
+      "yaw_tolerance_deg": 20
+    },
+    {
+      "name": "point_2",
+      "x": -4.009651,
+      "y": 4.688602,
+      "yaw_deg": -109.73095789008065,
+      "timeout": 180,
+      "position_tolerance": 0.3,
+      "yaw_tolerance_deg": 20,
+      "faults": [
+        {
+          "id": "ci_scan_dropout",
+          "start": 0,
+          "duration": 10
+        }
+      ]
+    },
+    {
+      "name": "point_3",
+      "x": -4.056923,
+      "y": -4.153041,
+      "yaw_deg": -20.62396007004071,
+      "timeout": 180,
+      "position_tolerance": 0.3,
+      "yaw_tolerance_deg": 20
+    },
+    {
+      "name": "point_4",
+      "x": 4.590066,
+      "y": -4.365178,
+      "yaw_deg": 60.1159483649998,
+      "timeout": 180,
+      "position_tolerance": 0.3,
+      "yaw_tolerance_deg": 20
+    }
+  ]
+}

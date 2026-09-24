@@ -31,3 +31,6 @@
 *.blend filter=lfs diff=lfs merge=lfs -text
 *.unitypackage filter=lfs diff=lfs merge=lfs -text
 *.fbx filter=lfs diff=lfs merge=lfs -text
+
+# Shell launchers must run unchanged in Linux/WSL
+tools/ci/*.sh text eol=lf

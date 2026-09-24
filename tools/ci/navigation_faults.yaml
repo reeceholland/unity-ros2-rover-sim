@@ -1,0 +1,22 @@
+# Keep forwarding active even when every fault is disabled.
+injectors:
+  - id: ci_motor_command
+    type: joint_state
+    seed: 42
+    topic:
+      input_topic: /platform/motors/cmd_raw
+      output_topic: /platform/motors/cmd
+      qos_depth: 10
+  - id: ci_scan
+    type: scan
+    seed: 42
+    topic:
+      input_topic: /scan_raw
+      output_topic: /scan
+      qos_depth: 10
+faults:
+  - id: ci_scan_dropout
+    injector_id: ci_scan
+    active_on_startup: false
+    config:
+      drop_probability: 1.0

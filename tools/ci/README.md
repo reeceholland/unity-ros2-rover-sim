@@ -82,10 +82,60 @@ and deadlines fail with nonzero exit status. Active goals are cancelled and
 activated faults are disabled on normal error/interrupt cleanup; the runner has
 a final bounded process-group shutdown as a fallback.
 
-Pose checks use the navigation TF estimate, **not independent Unity ground truth**.
-This tests navigation completion/recovery, not physical accuracy or proof of safe
-stopping during dropout. Add a ground-truth pose oracle and explicit stop-distance
-assertions before using these results to assess safety behavior.
+Final goal pose checks use the navigation TF estimate. The resilience observer also
+checks **independent Unity Rigidbody ground truth**, final wheel commands, injected
+scans and collision status. Rebuild the player: old releases lack these topics and
+will fail observer readiness rather than silently skip checks.
+
+## Resilience and collision observer
+
+`CiObserverTelemetry` installs itself only in `CiLidarWorld`, preserving the scene's
+existing layout. It publishes `/ci/ground_truth/odom`, attaches contact relays to the
+rover's physics bodies, and publishes `/test/collision_status`. Ground object `Floor`
+and the rover's own colliders are excluded; other physical contacts count as collisions.
+Ground must remain explicitly identifiable as `Floor`. Trigger-only objects are not
+contacts. Deliberately collide with a wall once to validate your collision matrix/body
+configuration before trusting a no-collision result.
+
+The Python observer runs inside the navigation process, without installing another ROS
+package. It subscribes to `/scan`, `/platform/motors/cmd` (JointState), ground truth and
+collision status. Any contact from arming through finishing fails navigation; counters
+retain brief contacts and heartbeats distinguish no contact from missing telemetry.
+Command zero means **all four commanded wheel velocities** are below `command_epsilon`
+in rad/s, not `/cmd_vel`. Position distance is accumulated ground-truth XY path length
+from injection until healthy recovery. Stop deadlines use simulation time. Fault
+scheduling still uses wall time and now waits for actual movement before enabling;
+duration begins at confirmed activation rather than original scheduled start.
+
+`observer_limits.json` contains tunable thresholds. Defaults are development examples,
+not validated safety limits. Three consecutive fresh scans are required before renewed
+motion. Missing scans, ground truth, commands or collision reporting cannot count as a pass.
+The observer requires exactly one sustained dropout and expects periodic wheel commands
+even when stopped. It detects behaviour; it does not implement a stop controller.
+
+For a sustained test without modifying your saved route:
+
+```bash
+bash tools/ci/run_headless_navigation.sh --dropout-duration 5
+```
+
+Live output includes `OBSERVER EVENT` JSON records and `OBSERVER FAIL` messages with
+GitHub error annotations. `observer/results.json` and `observer/junit.xml` retain
+assertions, collision objects/counts, timestamps and stopping measurements. The main
+navigation result/exit code also fails when the observer fails. `effective_scenario.json`
+records any duration override. Keep Unity running until the runner finishes so final
+collision heartbeats are collected.
+
+The framework repository's headless workflow records both new topics in the ROS bag,
+uploads the complete log directory even on failures, and adds an observer summary.
+Its dispatch inputs must point to a newly built player and the matching Unity source
+commit. Merely selecting new scripts with an old player will fail readiness.
+
+Run the observer's ROS-independent checks with:
+
+```bash
+python3 -m unittest discover -s tools/ci -p test_resilience_observer.py
+```
 
 ## Results and configuration
 

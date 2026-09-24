@@ -39,6 +39,7 @@ public class CiObserverTelemetry : MonoBehaviour
             var relay = target.GetComponent<RoverCollisionRelay>() ?? target.AddComponent<RoverCollisionRelay>();
             relay.publisher = publisher;
         }
+        CiCollisionFixture.Install(root, rigidbody, publisher);
         Debug.Log("CI_OBSERVER_TELEMETRY collision=/test/collision_status ground_truth=" + Topic);
     }
 

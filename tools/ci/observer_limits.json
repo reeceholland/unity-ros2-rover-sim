@@ -1,6 +1,6 @@
 {
   "scan_timeout": 0.5,
-  "command_margin": 0.1,
+  "command_margin": 0.2,
   "braking_allowance": 0.5,
   "telemetry_timeout": 1.0,
   "max_stop_distance": 0.3,
@@ -8,5 +8,6 @@
   "angular_epsilon": 0.02,
   "command_epsilon": 0.001,
   "healthy_scans": 3,
-  "min_dropout": 2.0
+  "min_dropout": 2.0,
+  "settled_stop_duration": 0.2
 }

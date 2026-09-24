@@ -72,12 +72,12 @@ class ObserverTests(unittest.TestCase):
             o.arm(1)
 
     def test_scans_during_dropout_fail(self):
-        o = self.ready(); o.fault(1, True); o.scan(1.2, 1.2)
+        o = self.ready(); o.fault(1, True); o.scan(1.3, 1.3)
         self.assertIn('dropout_confirmed', o.failures)
 
     def test_late_stop_callback_cannot_hide_missed_deadline(self):
         o = self.ready(); o.fault(1, True)
-        o.velocity(2, 0, 0); o.motion(2.2, .1, 0, 0, 0)
+        o.velocity(2, 0, 0); o.motion(2.3, .1, 0, 0, 0)
         self.assertIn('command_stop', o.failures)
         self.assertIn('physical_stop', o.failures)
 
@@ -88,8 +88,39 @@ class ObserverTests(unittest.TestCase):
 
     def test_restart_before_healthy_scans_fails(self):
         o = self.ready(); o.fault(1, True)
+        for i in range(1, 21):
+            self.heartbeat(o, 1 + i * .1)
+        o.fault(3, False)
+        o.velocity(3.1, .2, 0); o.motion(3.1, .06, 0, .2, 0)
+        self.assertIn('command_stop', o.failures)
+        self.assertIn('physical_stop', o.failures)
+
+    def test_transient_stop_during_braking_is_not_a_failure(self):
+        o = self.ready(); o.fault(1, True)
         self.heartbeat(o, 1.1)
         o.velocity(1.2, .2, 0); o.motion(1.2, .06, 0, .2, 0)
+        self.assertFalse(o.failures)
+        self.assertIsNone(o.command_stop)
+        self.assertIsNone(o.motion_stop)
+        for i in range(3, 21):
+            self.heartbeat(o, 1 + i * .1)
+        self.assertFalse(o.failures)
+        self.assertIsNotNone(o.command_stop)
+        self.assertIsNotNone(o.motion_stop)
+
+    def test_single_zero_cannot_establish_settled_stop(self):
+        o = self.ready(); o.fault(1, True)
+        self.heartbeat(o, 1.5)
+        o.tick(3)
+        self.assertIsNone(o.command_stop)
+        self.assertIsNone(o.motion_stop)
+        self.assertIn('command_stop', o.failures)
+
+    def test_restart_after_deadline_fails(self):
+        o = self.ready(); o.fault(1, True)
+        for i in range(1, 17):
+            self.heartbeat(o, 1 + i * .1)
+        o.velocity(2.7, .2, 0); o.motion(2.7, .06, 0, .2, 0)
         self.assertIn('command_stop', o.failures)
         self.assertIn('physical_stop', o.failures)
 

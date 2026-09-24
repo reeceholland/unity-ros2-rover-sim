@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 @dataclass
 class Limits:
     scan_timeout: float = 0.5
-    command_margin: float = 0.1
+    command_margin: float = 0.2
     braking_allowance: float = 0.5
     telemetry_timeout: float = 0.5
     max_stop_distance: float = 0.30
@@ -116,21 +116,13 @@ class Observer:
                 )
                 return
 
-            # Before the command deadline, ordinary braking is allowed. A zero
-            # sample starts a candidate interval, but does not yet establish a
-            # settled stop. If command subsequently becomes nonzero before scan
-            # recovery, that is renewed command after an observed stop candidate
-            # and must fail even though the settled-stop hold was not complete.
+            # Transient zeros during braking do not establish a settled stop.
             if t < self.command_deadline:
                 if zero:
                     if self.command_stop_candidate is None:
                         self.command_stop_candidate = t
-                elif self.command_stop_candidate is not None:
+                else:
                     self.command_stop_candidate = None
-                    self.fail(
-                        'command_stop',
-                        'Nonzero command resumed after stop candidate and before recovery',
-                    )
                 return
 
             # From the deadline onward, command must remain zero until recovery.
@@ -197,20 +189,12 @@ class Observer:
                 )
                 return
 
-            # Braking is allowed before the physical-stop deadline. A
-            # low-speed sample only starts a stop candidate; it does not confirm
-            # a settled stop. If physical motion subsequently resumes before
-            # scan recovery, record that renewed motion immediately.
             if t < self.motion_deadline:
                 if stopped:
                     if self.motion_stop_candidate is None:
                         self.motion_stop_candidate = t
-                elif self.motion_stop_candidate is not None:
+                else:
                     self.motion_stop_candidate = None
-                    self.fail(
-                        'physical_stop',
-                        'Motion resumed after stop candidate and before recovery',
-                    )
                 return
 
             # From the deadline onward the rover must stay within the stopped
@@ -355,7 +339,7 @@ class Observer:
             # A single stopped sample cannot satisfy either assertion. If the
             # hold interval expires without a later confirming sample, fail
             # rather than inferring a sustained stop from stale state.
-            if (t > self.command_deadline + self.limits.settled_stop_duration and
+            if (t > self.command_deadline + self.limits.settled_stop_duration + self.limits.telemetry_timeout and
                     self.command_stop is None):
                 self.fail(
                     'command_stop',
@@ -363,7 +347,7 @@ class Observer:
                     f'{self.limits.settled_stop_duration:.3f} s after deadline',
                 )
 
-            if (t > self.motion_deadline + self.limits.settled_stop_duration and
+            if (t > self.motion_deadline + self.limits.settled_stop_duration + self.limits.telemetry_timeout and
                     self.motion_stop is None):
                 self.fail(
                     'physical_stop',

@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import os
 from pathlib import Path
 import signal
 import time
@@ -10,6 +11,25 @@ import xml.etree.ElementTree as ET
 
 from navigation_scenario import load_scenario, pose_errors
 from resilience_observer import Observer, Limits, write_report
+
+
+def navigation_summary(report):
+    lines = ['### Headless navigation diagnostics', '',
+             '**' + ('PASS' if report['passed'] else 'FAIL') + '**', '']
+    missing = [name for name, ready in report.get('readiness', {}).items() if not ready]
+    if missing:
+        lines += ['Missing/stale readiness: ' + ', '.join(missing), '']
+    for goal in report['goals']:
+        lines.append(f"- {goal['name']}: {'PASS' if goal['passed'] else 'FAIL'}")
+        for number, attempt in enumerate(goal.get('attempts', []), 1):
+            lines.append(f"  - Attempt {number}: status={attempt['status']}, error_code={attempt['error_code']}")
+        if goal.get('recovery_policy'):
+            lines.append('  - Recovery: one explicit retry after healthy scans and fresh TF.')
+        if goal.get('error'):
+            lines.append('  - ' + str(goal['error']).replace('\n', ' '))
+    for name, detail in report['observer'].get('failures', {}).items():
+        lines.append(f'- Observer `{name}`: {detail}')
+    return '\n'.join(lines) + '\n'
 
 
 def main():
@@ -36,6 +56,7 @@ def main():
     observer_report = None
     printed_failures = set()
     printed_events = 0
+    readiness = {}
 
     def log(message):
         print(f'[{time.monotonic() - started:8.2f}s] {message}', flush=True)
@@ -62,6 +83,7 @@ def main():
         from rclpy.time import Time
         from rclpy.qos import qos_profile_sensor_data
         from lifecycle_msgs.srv import GetState
+        from rcl_interfaces.srv import GetParameters
         from action_msgs.msg import GoalStatus
         from nav2_msgs.action import NavigateToPose
         from rosgraph_msgs.msg import Clock
@@ -129,6 +151,9 @@ def main():
 
         def spin(check_clock=True):
             nonlocal printed_events
+            process_failure = os.environ.get('CI_PROCESS_FAILURE_FILE')
+            if check_clock and process_failure and Path(process_failure).exists():
+                raise RuntimeError(Path(process_failure).read_text().strip())
             rclpy.spin_once(node, timeout_sec=0.02)
             observer.tick(sim_time())
             for event in observer.events[printed_events:]:
@@ -172,23 +197,42 @@ def main():
                 raise RuntimeError('Map pose transform is stale')
             return transform.transform
 
-        log('Waiting for clock, scan, map TF, Nav2 and fault service')
+        log('Waiting for individual readiness checks')
         deadline = time.monotonic() + config['ready_timeout']
+        last_readiness_log = 0
         while True:
             spin(False)
+            process_failure = os.environ.get('CI_PROCESS_FAILURE_FILE')
+            if process_failure and Path(process_failure).exists():
+                raise RuntimeError(Path(process_failure).read_text().strip())
             try:
                 pose()
-                ready = (state['sim'] is not None and time.monotonic() - state['advance'] < 1
-                         and time.monotonic() - state['scan'] < 1
-                         and client.server_is_ready() and service.service_is_ready())
-                if ready:
-                    break
+                tf_ready = True
             except (TransformException, RuntimeError):
-                pass
-            if time.monotonic() >= deadline:
-                raise RuntimeError('Readiness timeout: need clock, raw scan, map TF, Nav2 action and fault service')
+                tf_ready = False
+            now = time.monotonic()
+            checks = {
+                'clock': state['sim'] is not None and now - state['advance'] < 1,
+                'raw_scan': now - state['scan'] < 1,
+                'map_tf': tf_ready,
+                'nav2_action': client.server_is_ready(),
+                'fault_service': service.service_is_ready(),
+            }
+            checks.update({name: name in observer.seen and
+                           sim_time() - observer.seen[name] <= observer.limits.telemetry_timeout
+                           for name in ('scan', 'command', 'motion', 'collision')})
+            if checks != readiness or now - last_readiness_log >= 5:
+                log('READINESS ' + ' '.join(f'{k}={"READY" if v else "WAIT"}' for k, v in checks.items()))
+                last_readiness_log = now
+            readiness = checks
+            if all(checks.values()):
+                break
+            if now >= deadline:
+                raise RuntimeError('Readiness timeout; missing/stale: ' +
+                                   ', '.join(k for k, v in checks.items() if not v))
         # Action discovery precedes lifecycle activation; wait for all servers.
         for name in ('planner_server', 'controller_server', 'bt_navigator'):
+            readiness[name] = False
             log(f'Waiting for {name} lifecycle activation')
             lifecycle = node.create_client(GetState, f'/{name}/get_state')
             while True:
@@ -197,9 +241,20 @@ def main():
                 if lifecycle.service_is_ready():
                     response = wait(lifecycle.call_async(GetState.Request()), seconds=min(5, max(0.01, deadline - time.monotonic())))
                     if response.current_state.id == 3:
+                        readiness[name] = True
+                        log(f'READINESS {name}=ACTIVE')
                         break
                 for _ in range(10):
                     spin()
+        parameters = node.create_client(GetParameters, '/collision_monitor/get_parameters')
+        while not parameters.service_is_ready():
+            spin()
+            if time.monotonic() >= deadline:
+                raise RuntimeError('Readiness timeout: Collision Monitor parameter service missing')
+        actual = wait(parameters.call_async(GetParameters.Request(names=['source_timeout']))).values
+        if len(actual) != 1 or not math.isclose(actual[0].double_value, observer.limits.scan_timeout, abs_tol=1e-6):
+            raise RuntimeError('Collision Monitor source_timeout differs from observer scan_timeout; rebuild/source the updated rover workspace')
+        log(f'STOP CONTRACT scan_timeout={observer.limits.scan_timeout}s command_margin={observer.limits.command_margin}s braking={observer.limits.braking_allowance}s')
         fault_state('ci_scan_dropout', False)
         log('Waiting for observer telemetry: injected scan, wheel commands, Unity ground truth and collisions')
         while True:
@@ -251,20 +306,75 @@ def main():
             enabled = set()
             disabled = set()
             enabled_at = {}
-            while not pending.done():
+            moving_since = None
+            recovery_deadline = None
+            original_recorded = False
+            retry_sent = False
+            record['attempts'] = []
+            while True:
                 spin()
                 elapsed = time.monotonic() - schedule_start
+                # Reset for each accepted goal; require fresh commanded and actual
+                # movement for a full second, not residual velocity at acceptance.
+                fresh_motion = (sim_time() - observer.seen.get('motion', -math.inf) < 0.2
+                                and sim_time() - observer.seen.get('command', -math.inf) < 0.2)
+                moving = (fresh_motion and not observer.is_stopped() and observer.command
+                          and max(observer.command) > observer.limits.command_epsilon)
+                if moving and not pending.done():
+                    if moving_since is None:
+                        moving_since = sim_time()
+                else:
+                    moving_since = None
                 if time.monotonic() - goal_start > goal['timeout']:
                     raise RuntimeError(f"Goal deadline exceeded: {goal['name']}")
                 for fault in goal.get('faults', []):
                     fid = fault['id']
-                    if elapsed >= fault['start'] and fid not in enabled and not observer.is_stopped():
+                    if (elapsed >= fault['start'] and fid not in enabled and moving_since is not None
+                            and sim_time() - moving_since >= 1.0):
                         fault_state(fid, True)
                         enabled.add(fid)
                         enabled_at[fid] = time.monotonic()
                     if fid in enabled and time.monotonic() - enabled_at[fid] >= fault['duration'] and fid not in disabled:
                         fault_state(fid, False)
                         disabled.add(fid)
+                        recovery_deadline = time.monotonic() + 20.0
+                if pending.done() and not original_recorded:
+                    original = pending.result()
+                    record['attempts'].append(dict(status=original.status,
+                        error_code=getattr(original.result, 'error_code', None),
+                        error_msg=getattr(original.result, 'error_msg', ''),
+                        elapsed=time.monotonic() - goal_start))
+                    original_recorded = True
+                    log('NAVIGATION ATTEMPT ' + json.dumps(record['attempts'][-1]))
+                    if not enabled and goal.get('faults'):
+                        raise RuntimeError('Goal ended before sustained movement allowed injection')
+                # Keep spinning after an abort until every activated outage has
+                # run its full duration. Cleanup is reserved for real errors.
+                if enabled - disabled:
+                    continue
+                if enabled:
+                    healthy = observer.recovered
+                    try:
+                        pose()
+                    except (TransformException, RuntimeError):
+                        healthy = False
+                    if not healthy:
+                        if recovery_deadline is not None and time.monotonic() >= recovery_deadline:
+                            raise RuntimeError('Recovery timeout: require healthy scans and fresh map TF')
+                        continue
+                    if pending.done() and pending.result().status == GoalStatus.STATUS_ABORTED and not retry_sent:
+                        log('RECOVERY: healthy scans and fresh TF; retrying aborted goal once')
+                        record['recovery_policy'] = 'retry_once_after_healthy_scans_and_tf'
+                        message.pose.header.stamp = node.get_clock().now().to_msg()
+                        handle = wait(client.send_goal_async(message, feedback_callback=feedback))
+                        if not handle.accepted:
+                            raise RuntimeError('Recovery retry rejected')
+                        pending = handle.get_result_async()
+                        retry_sent = True
+                        original_recorded = False
+                        continue
+                if pending.done():
+                    break
             result = pending.result()
             handle = None
             log(f"RESULT {goal['name']}: status={result.status} (4=SUCCEEDED), error_code={getattr(result.result, 'error_code', None)}, error_msg={getattr(result.result, 'error_msg', '')!r}")
@@ -290,6 +400,8 @@ def main():
     except (Exception, KeyboardInterrupt) as error:
         failure = f'{type(error).__name__}: {error}'
         print(f'FAIL: {failure}', flush=True)
+        escaped = failure.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+        print(f'::error title=Navigation runner::{escaped}', flush=True)
     finally:
         if node is not None:
             cleanup_errors = []
@@ -322,8 +434,13 @@ def main():
                 results.append({'name': 'setup_or_cleanup', 'passed': False})
             results[-1]['error'] = failure
         report = {'passed': failure is None, 'elapsed': time.monotonic() - started, 'goals': results, 'fault_events': events,
-                  'observer': observer_report}
+                  'observer': observer_report, 'readiness': readiness}
         (output / 'results.json').write_text(json.dumps(report, indent=2) + '\n')
+        summary = navigation_summary(report)
+        (output / 'summary.md').write_text(summary)
+        if os.environ.get('GITHUB_STEP_SUMMARY'):
+            with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
+                stream.write(summary)
         suite = ET.Element('testsuite', name='rover_navigation', tests=str(len(results)), failures=str(sum(not r['passed'] for r in results)))
         for record in results:
             case = ET.SubElement(suite, 'testcase', name=record['name'], time=str(record.get('duration', 0)))

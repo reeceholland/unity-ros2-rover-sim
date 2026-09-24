@@ -9,12 +9,15 @@ import time
 import xml.etree.ElementTree as ET
 
 from navigation_scenario import load_scenario, pose_errors
+from resilience_observer import Observer, Limits, write_report
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--scenario', required=True)
     parser.add_argument('--output', required=True)
+    parser.add_argument('--observer-config', default=str(Path(__file__).with_name('observer_limits.json')))
+    parser.add_argument('--dropout-duration', type=float, help='Override scheduled dropout duration in wall seconds')
     parser.add_argument('--feedback-interval', type=float, default=1.0,
                         help='Seconds between verbose feedback lines; 0 prints every feedback message')
     args = parser.parse_args()
@@ -29,6 +32,10 @@ def main():
     active = set()
     started = time.monotonic()
     failure = None
+    observer = None
+    observer_report = None
+    printed_failures = set()
+    printed_events = 0
 
     def log(message):
         print(f'[{time.monotonic() - started:8.2f}s] {message}', flush=True)
@@ -36,6 +43,18 @@ def main():
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     try:
         config = load_scenario(args.scenario)
+        observer = Observer(Limits(**json.loads(Path(args.observer_config).read_text())))
+        if args.dropout_duration is not None:
+            if not math.isfinite(args.dropout_duration) or args.dropout_duration <= 0:
+                raise ValueError('--dropout-duration must be finite and positive')
+            for goal in config['goals']:
+                for fault in goal.get('faults', []):
+                    if fault['start'] + args.dropout_duration >= goal['timeout']:
+                        raise ValueError('Overridden dropout must fit within the goal deadline')
+                    fault['duration'] = args.dropout_duration
+        (output / 'effective_scenario.json').write_text(json.dumps(config, indent=2) + '\n')
+        if sum(len(g.get('faults', [])) for g in config['goals']) != 1:
+            raise ValueError('Resilience observer requires exactly one dropout per scenario')
         log(f"Loaded {len(config['goals'])} map-frame goals from {args.scenario}")
         import rclpy
         from rclpy.action import ActionClient
@@ -46,7 +65,9 @@ def main():
         from action_msgs.msg import GoalStatus
         from nav2_msgs.action import NavigateToPose
         from rosgraph_msgs.msg import Clock
-        from sensor_msgs.msg import LaserScan
+        from sensor_msgs.msg import LaserScan, JointState
+        from nav_msgs.msg import Odometry
+        from std_msgs.msg import String
         from tf2_ros import Buffer, TransformListener, TransformException
         from ros2_fault_injection.srv import SetFaultState
 
@@ -73,8 +94,53 @@ def main():
         node.create_subscription(Clock, '/clock', clock, qos_profile_sensor_data)
         node.create_subscription(LaserScan, '/scan_raw', scan, qos_profile_sensor_data)
 
+        def sim_time():
+            return node.get_clock().now().nanoseconds * 1e-9
+
+        def observed_scan(message):
+            if not message.ranges:
+                observer.fail('scan_valid', 'Empty injected scan')
+                return
+            stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
+            observer.scan(sim_time(), stamp)
+
+        def ground_truth(message):
+            stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
+            if abs(sim_time() - stamp) > observer.limits.telemetry_timeout:
+                observer.fail('motion_timestamp', 'Stale Unity ground truth')
+                return
+            p, v = message.pose.pose.position, message.twist.twist
+            observer.motion(sim_time(), p.x, p.y, math.hypot(v.linear.x, v.linear.y), v.angular.z)
+
+        def motor_command(message):
+            required = {'front_left_joint', 'front_right_joint', 'rear_left_joint', 'rear_right_joint'}
+            values = dict(zip(message.name, message.velocity))
+            if not required <= values.keys() or not all(math.isfinite(values[k]) for k in required):
+                observer.fail('command_valid', 'Missing/non-finite wheel velocity command')
+                return
+            # Actual actuator input: max absolute wheel speed, radians/second.
+            observer.velocity(sim_time(), max(abs(values[k]) for k in required), 0.0)
+
+        node.create_subscription(LaserScan, '/scan', observed_scan, qos_profile_sensor_data)
+        node.create_subscription(Odometry, '/ci/ground_truth/odom', ground_truth, qos_profile_sensor_data)
+        node.create_subscription(JointState, '/platform/motors/cmd', motor_command, qos_profile_sensor_data)
+        node.create_subscription(String, '/test/collision_status',
+                                 lambda m: observer.collision(sim_time(), m.data), 100)
+
         def spin(check_clock=True):
+            nonlocal printed_events
             rclpy.spin_once(node, timeout_sec=0.02)
+            observer.tick(sim_time())
+            for event in observer.events[printed_events:]:
+                log('OBSERVER EVENT ' + json.dumps(event, sort_keys=True))
+            printed_events = len(observer.events)
+            for name, detail in observer.failures.items():
+                if name not in printed_failures:
+                    log(f'OBSERVER FAIL {name}: {detail}')
+                    # GitHub renders this as a job annotation; escape control text.
+                    escaped = str(detail).replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                    print(f'::error title=Observer {name}::{escaped}', flush=True)
+                    printed_failures.add(name)
             if check_clock and (state['reset'] or time.monotonic() - state['advance'] > config['clock_timeout']):
                 raise RuntimeError('Simulation clock reset or stopped advancing')
 
@@ -95,6 +161,7 @@ def main():
                 raise RuntimeError(response.message)
             if not enabled:
                 active.discard(fault_id)
+            observer.fault(sim_time(), enabled)
             log(f"FAULT {fault_id}: {'ENABLED' if enabled else 'DISABLED'}; sim={state['sim']:.3f}s")
             events.append({'id': fault_id, 'active': enabled, 'wall_elapsed': time.monotonic() - started, 'sim_time': state['sim']})
 
@@ -134,6 +201,15 @@ def main():
                 for _ in range(10):
                     spin()
         fault_state('ci_scan_dropout', False)
+        log('Waiting for observer telemetry: injected scan, wheel commands, Unity ground truth and collisions')
+        while True:
+            spin()
+            try:
+                observer.arm(sim_time())
+                break
+            except ValueError as error:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError(f'Observer readiness timeout: {error}; rebuild the CI player')
         for index, goal in enumerate(config['goals'], 1):
             record = {'name': goal['name'], 'passed': False}
             results.append(record)
@@ -174,6 +250,7 @@ def main():
             schedule_start = time.monotonic()
             enabled = set()
             disabled = set()
+            enabled_at = {}
             while not pending.done():
                 spin()
                 elapsed = time.monotonic() - schedule_start
@@ -181,10 +258,11 @@ def main():
                     raise RuntimeError(f"Goal deadline exceeded: {goal['name']}")
                 for fault in goal.get('faults', []):
                     fid = fault['id']
-                    if elapsed >= fault['start'] and fid not in enabled:
+                    if elapsed >= fault['start'] and fid not in enabled and not observer.is_stopped():
                         fault_state(fid, True)
                         enabled.add(fid)
-                    if elapsed >= fault['start'] + fault['duration'] and fid not in disabled:
+                        enabled_at[fid] = time.monotonic()
+                    if fid in enabled and time.monotonic() - enabled_at[fid] >= fault['duration'] and fid not in disabled:
                         fault_state(fid, False)
                         disabled.add(fid)
             result = pending.result()
@@ -204,6 +282,11 @@ def main():
                 raise RuntimeError(f'Final pose outside tolerance: {record}')
             record['passed'] = True
             log(f"PASS {goal['name']}: position_error={distance:.3f}m yaw_error={angle:.3f}deg duration={record['duration']:.2f}s")
+        # Drain post-motion collision heartbeats before declaring success.
+        settle = time.monotonic() + 2.0
+        while time.monotonic() < settle:
+            spin()
+        observer.navigation_result(sim_time(), True)
     except (Exception, KeyboardInterrupt) as error:
         failure = f'{type(error).__name__}: {error}'
         print(f'FAIL: {failure}', flush=True)
@@ -222,13 +305,24 @@ def main():
                     cleanup_errors.append(str(error))
             if cleanup_errors:
                 failure = (failure or '') + '; cleanup failed: ' + '; '.join(cleanup_errors)
+            if observer is not None and observer.active:
+                if failure:
+                    observer.fail('runner', failure)
+                observer_report = observer.finish(sim_time())
             node.destroy_node()
             rclpy.shutdown()
+        if observer_report is None:
+            observer_report = {'passed': False, 'failures': {'setup': failure or 'Observer never armed'}}
+        write_report(observer_report, output / 'observer')
+        log('OBSERVER ' + ('PASS' if observer_report['passed'] else 'FAIL') + ': ' + json.dumps(observer_report.get('failures', {})))
+        if not observer_report['passed']:
+            failure = failure or 'Resilience observer assertions failed (see observer/results.json)'
         if failure:
             if not results or results[-1]['passed']:
                 results.append({'name': 'setup_or_cleanup', 'passed': False})
             results[-1]['error'] = failure
-        report = {'passed': failure is None, 'elapsed': time.monotonic() - started, 'goals': results, 'fault_events': events}
+        report = {'passed': failure is None, 'elapsed': time.monotonic() - started, 'goals': results, 'fault_events': events,
+                  'observer': observer_report}
         (output / 'results.json').write_text(json.dumps(report, indent=2) + '\n')
         suite = ET.Element('testsuite', name='rover_navigation', tests=str(len(results)), failures=str(sum(not r['passed'] for r in results)))
         for record in results:

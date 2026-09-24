@@ -24,7 +24,7 @@
         {
           "id": "ci_scan_dropout",
           "start": 0,
-          "duration": 1
+          "duration": 10
         }
       ]
     },

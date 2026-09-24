@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 
 from navigation_scenario import load_scenario, pose_errors
 from resilience_observer import Observer, Limits, write_report
+from controller_readiness import wait_for_drive_controller
 
 
 def navigation_summary(report):
@@ -83,6 +84,7 @@ def main():
         from rclpy.time import Time
         from rclpy.qos import qos_profile_sensor_data
         from lifecycle_msgs.srv import GetState
+        from controller_manager_msgs.srv import ListControllers
         from rcl_interfaces.srv import GetParameters
         from action_msgs.msg import GoalStatus
         from nav2_msgs.action import NavigateToPose
@@ -246,6 +248,10 @@ def main():
                         break
                 for _ in range(10):
                     spin()
+        readiness['diff_drive_controller'] = False
+        controllers = node.create_client(ListControllers, '/controller_manager/list_controllers')
+        wait_for_drive_controller(controllers, ListControllers.Request(), spin, log, deadline)
+        readiness['diff_drive_controller'] = True
         parameters = node.create_client(GetParameters, '/collision_monitor/get_parameters')
         while not parameters.service_is_ready():
             spin()

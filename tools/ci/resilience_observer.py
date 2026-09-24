@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 @dataclass
 class Limits:
-    scan_timeout: float = 0.5
+    scan_timeout: float = 1.0
     command_margin: float = 0.2
     braking_allowance: float = 0.5
     telemetry_timeout: float = 0.5

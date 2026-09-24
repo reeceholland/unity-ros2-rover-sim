@@ -77,7 +77,7 @@ class ObserverTests(unittest.TestCase):
 
     def test_late_stop_callback_cannot_hide_missed_deadline(self):
         o = self.ready(); o.fault(1, True)
-        o.velocity(2, 0, 0); o.motion(2.3, .1, 0, 0, 0)
+        o.velocity(2.5, 0, 0); o.motion(2.8, .1, 0, 0, 0)
         self.assertIn('command_stop', o.failures)
         self.assertIn('physical_stop', o.failures)
 

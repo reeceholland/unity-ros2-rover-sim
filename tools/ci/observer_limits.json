@@ -1,5 +1,5 @@
 {
-  "scan_timeout": 0.5,
+  "scan_timeout": 1.0,
   "command_margin": 0.2,
   "braking_allowance": 0.5,
   "telemetry_timeout": 1.0,

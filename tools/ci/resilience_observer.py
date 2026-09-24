@@ -16,6 +16,7 @@ class Limits:
     linear_epsilon: float = 0.02
     angular_epsilon: float = 0.02
     command_epsilon: float = 0.001
+    settled_stop_duration: float = 0.20
     healthy_scans: int = 3
     min_dropout: float = 2.0
 
@@ -42,6 +43,12 @@ class Observer:
         self.stop_origin = None
         self.stop_distance = 0.0
         self.max_measured_stop_distance = 0.0
+        # A stop is only established after the command/motion has remained
+        # continuously stopped from its deadline for settled_stop_duration.
+        # Candidate timestamps are deliberately separate from the confirmed
+        # stop timestamps so one transient zero/low-speed sample cannot pass.
+        self.command_stop_candidate = None
+        self.motion_stop_candidate = None
         self.command_stop = None
         self.motion_stop = None
         self.recovery_count = 0
@@ -97,13 +104,41 @@ class Observer:
         self.command = (abs(linear), abs(angular))
         if self.fault_started is not None and not self.recovered:
             zero = max(self.command) <= self.limits.command_epsilon
-            if zero and self.command_stop is None:
+
+            # Before the deadline, braking is expected. Track a possible stop,
+            # but do not treat it as settled and do not reject renewed command.
+            if t < self.command_deadline:
+                self.command_stop_candidate = t if zero else None
+                return
+
+            # From the deadline onward the command must remain zero. A command
+            # that becomes nonzero again is either failure to stop by the
+            # deadline or renewed motion after an already-settled stop.
+            if not zero:
+                self.command_stop_candidate = None
+                if self.command_stop is None:
+                    self.fail('command_stop', 'Nonzero command at or after stop deadline')
+                else:
+                    self.fail('command_stop', 'Nonzero command resumed after settled stop and before recovery')
+                return
+
+            # A zero observed before the deadline can only earn credit from the
+            # deadline itself. Confirmation still requires another observation
+            # after settled_stop_duration has elapsed.
+            if self.command_stop_candidate is None:
+                self.command_stop_candidate = t
+            elif self.command_stop_candidate < self.command_deadline:
+                self.command_stop_candidate = self.command_deadline
+
+            if (self.command_stop is None and
+                    t - self.command_stop_candidate >= self.limits.settled_stop_duration):
                 self.command_stop = t
-                self.event(t, 'command_stopped')
-                if t > self.command_deadline:
-                    self.fail('command_stop', 'First stop command arrived after deadline')
-            if not zero and (self.command_stop is not None or t >= self.command_deadline):
-                self.fail('command_stop', 'Nonzero command after stop/deadline and before recovery')
+                self.event(
+                    t,
+                    'command_stopped',
+                    settled_since=self.command_stop_candidate,
+                    duration=t - self.command_stop_candidate,
+                )
 
     def motion(self, t, x, y, linear, angular):
         if not all(math.isfinite(v) for v in (x, y, linear, angular)):
@@ -119,13 +154,38 @@ class Observer:
         self.seen['motion'] = t
         if self.fault_started is not None and not self.recovered:
             stopped = self.is_stopped()
-            if stopped and self.motion_stop is None:
+
+            # Braking and small transient low-speed samples are allowed until
+            # the physical-stop deadline. They do not establish a settled stop.
+            if t < self.motion_deadline:
+                self.motion_stop_candidate = t if stopped else None
+                return
+
+            # From the deadline onward the rover must stay within the stopped
+            # thresholds. Any renewed motion is a failure until scan recovery.
+            if not stopped:
+                self.motion_stop_candidate = None
+                if self.motion_stop is None:
+                    self.fail('physical_stop', 'Rover still moving at or after physical-stop deadline')
+                else:
+                    self.fail('physical_stop', 'Motion resumed after settled stop and before recovery')
+                return
+
+            if self.motion_stop_candidate is None:
+                self.motion_stop_candidate = t
+            elif self.motion_stop_candidate < self.motion_deadline:
+                self.motion_stop_candidate = self.motion_deadline
+
+            if (self.motion_stop is None and
+                    t - self.motion_stop_candidate >= self.limits.settled_stop_duration):
                 self.motion_stop = t
-                self.event(t, 'motion_stopped', distance=self.stop_distance)
-                if t > self.motion_deadline:
-                    self.fail('physical_stop', 'Physical stop observed after deadline')
-            if not stopped and (self.motion_stop is not None or t >= self.motion_deadline):
-                self.fail('physical_stop', 'Motion after stop/deadline and before recovery')
+                self.event(
+                    t,
+                    'motion_stopped',
+                    distance=self.stop_distance,
+                    settled_since=self.motion_stop_candidate,
+                    duration=t - self.motion_stop_candidate,
+                )
 
     def collision(self, t, payload):
         # A cumulative counter catches brief contacts even when event packets are lost.
@@ -212,11 +272,39 @@ class Observer:
                 self.fail('telemetry_' + name, f'{name} heartbeat missing or stale')
         if self.recovered and t - self.last_scan > self.limits.scan_timeout:
             self.fail('recovery_stable', 'Scans became stale again after recovery')
-        if self.fault_started is not None:
-            if t >= self.command_deadline and self.command_stop is None:
-                self.fail('command_stop', 'No observed stop command before deadline')
-            if t >= self.motion_deadline and self.motion_stop is None:
-                self.fail('physical_stop', 'No observed physical stop before deadline')
+        if self.fault_started is not None and not self.recovered:
+            # At the deadline the latest observed state must already be stopped.
+            # Confirmation is intentionally deferred until a later sample proves
+            # that the stopped state was sustained for settled_stop_duration.
+            if t >= self.command_deadline:
+                command_zero = (
+                    self.command is not None and
+                    max(self.command) <= self.limits.command_epsilon
+                )
+                if not command_zero:
+                    self.fail('command_stop', 'Command was not zero by stop deadline')
+
+            if t >= self.motion_deadline and not self.is_stopped():
+                self.fail('physical_stop', 'Rover was not stopped by physical-stop deadline')
+
+            # A single stopped sample cannot satisfy either assertion. If the
+            # hold interval expires without a later confirming sample, fail
+            # rather than inferring a sustained stop from stale state.
+            if (t > self.command_deadline + self.limits.settled_stop_duration and
+                    self.command_stop is None):
+                self.fail(
+                    'command_stop',
+                    f'Zero command was not sustained for '
+                    f'{self.limits.settled_stop_duration:.3f} s after deadline',
+                )
+
+            if (t > self.motion_deadline + self.limits.settled_stop_duration and
+                    self.motion_stop is None):
+                self.fail(
+                    'physical_stop',
+                    f'Stopped motion was not sustained for '
+                    f'{self.limits.settled_stop_duration:.3f} s after deadline',
+                )
 
     def finish(self, t):
         if not self.active:
@@ -238,8 +326,15 @@ class Observer:
         return {
             'passed': not self.failures, 'failures': dict(self.failures),
             'checks': required, 'limits': asdict(self.limits),
-            'metrics': {'stop_distance_m': self.max_measured_stop_distance,
-                        'command_stop_time': self.command_stop, 'motion_stop_time': self.motion_stop},
+            'metrics': {
+                'stop_distance_m': self.max_measured_stop_distance,
+                'command_stop_time': self.command_stop,
+                'command_stop_settled_since': self.command_stop_candidate
+                    if self.command_stop is not None else None,
+                'motion_stop_time': self.motion_stop,
+                'motion_stop_settled_since': self.motion_stop_candidate
+                    if self.motion_stop is not None else None,
+            },
             'events': list(self.events),
         }
 
